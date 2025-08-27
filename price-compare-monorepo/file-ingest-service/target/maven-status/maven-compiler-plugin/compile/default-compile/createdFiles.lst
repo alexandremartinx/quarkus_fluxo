@@ -1,0 +1,4 @@
+com/acme/ingest/ParserService.class
+com/acme/ingest/DeltaWriter.class
+com/acme/ingest/IngestResource.class
+com/acme/ingest/MQEmitter.class

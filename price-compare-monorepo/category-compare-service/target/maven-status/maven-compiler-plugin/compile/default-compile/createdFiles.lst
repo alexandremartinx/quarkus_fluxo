@@ -1,0 +1,5 @@
+com/acme/category/CategoryCompareResource.class
+com/acme/category/CategoryCompareResource$PriceRepo.class
+com/acme/category/CategoryCompareResource$PriceEntry.class
+com/acme/category/CategoryCompareResource$ApiMessage.class
+com/acme/category/RedisCache.class

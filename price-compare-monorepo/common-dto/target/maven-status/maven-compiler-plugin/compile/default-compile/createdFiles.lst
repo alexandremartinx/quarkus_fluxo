@@ -1,0 +1,2 @@
+com/acme/common/events/PriceParsedEvent.class
+com/acme/common/dto/PriceRecord.class

@@ -1,0 +1,4 @@
+/home/alexandre-martins/Documentos/chepa/quarkus_fluxo/price-compare-monorepo/file-ingest-service/src/main/java/com/acme/ingest/DeltaWriter.java
+/home/alexandre-martins/Documentos/chepa/quarkus_fluxo/price-compare-monorepo/file-ingest-service/src/main/java/com/acme/ingest/IngestResource.java
+/home/alexandre-martins/Documentos/chepa/quarkus_fluxo/price-compare-monorepo/file-ingest-service/src/main/java/com/acme/ingest/MQEmitter.java
+/home/alexandre-martins/Documentos/chepa/quarkus_fluxo/price-compare-monorepo/file-ingest-service/src/main/java/com/acme/ingest/ParserService.java

@@ -1,57 +1,100 @@
 package com.acme.category;
 
+import io.quarkus.mongodb.panache.PanacheMongoRepository;
+import io.quarkus.mongodb.panache.common.MongoEntity;
+import io.quarkus.panache.common.Sort;
+import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.*;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import org.bson.Document;
-import io.quarkus.mongodb.panache.PanacheMongoRepositoryBase;
-import jakarta.enterprise.context.ApplicationScoped;
 
-import java.time.Duration;
 import java.util.*;
+import java.util.stream.Collectors;
 
-@Path("/compare/category")
+@Path("/category")
 @Produces(MediaType.APPLICATION_JSON)
 public class CategoryCompareResource {
 
-    @ApplicationScoped
-    static class PriceRepo implements PanacheMongoRepositoryBase<Object, String> {
-        public List<Document> bestPerStoreByCategory(String category, int limitPerStore) {
-            return getCollection().aggregate(List.of(
-                new Document("$match", new Document("category", category)),
-                new Document("$sort", new Document("ts", -1)),
-                new Document("$group", new Document("_id", new Document("storeId", "$storeId").append("ean", "$ean"))
-                    .append("storeId", new Document("$first", "$storeId"))
-                    .append("ean", new Document("$first", "$ean"))
-                    .append("price", new Document("$first", "$price"))
-                    .append("ts", new Document("$first", "$ts"))
-                ),
-                new Document("$sort", new Document("price", 1)),
-                new Document("$group", new Document("_id", "$storeId")
-                    .append("top", new Document("$push", new Document("ean", "$ean").append("price", "$price")))),
-                new Document("$project", new Document("storeId", "$_id").append("_id", 0)
-                    .append("top", new Document("$slice", Arrays.asList("$top", limitPerStore))))
-            )).into(new ArrayList<>());
+    @Inject
+    PriceRepo repo;
+
+    // ---------- Menor preço dentro da categoria ----------
+    @GET
+    @Path("/{category}/best")
+    public Response bestInCategory(@PathParam("category") String category) {
+        List<PriceEntry> rows = repo.findByCategoryOrderedByPrice(category);
+        if (rows.isEmpty()) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity(new ApiMessage("Sem preços para a categoria " + category))
+                    .build();
         }
+        PriceEntry best = rows.stream()
+                .filter(r -> r.price != null)
+                .min(Comparator.comparingDouble(r -> r.price))
+                .orElse(rows.get(0));
+        return Response.ok(best).build();
     }
 
-    @Inject PriceRepo repo;
-    @Inject RedisCache cache;
-
+    // ---------- Lista ordenada por preço (asc) ----------
     @GET
-    @Path("/{category}")
-    public Response compare(
-            @PathParam("category") String category,
-            @QueryParam("limitPerStore") @DefaultValue("5") int limitPerStore) {
-        String key = "cmp:cat:" + category + ":" + limitPerStore;
-        var cached = cache.get(key);
-        if (cached.isPresent()) return Response.ok(cached.get()).build();
+    @Path("/{category}/list")
+    public List<PriceEntry> listByCategory(@PathParam("category") String category) {
+        return repo.findByCategoryOrderedByPrice(category);
+    }
 
-        var rows = repo.bestPerStoreByCategory(category, limitPerStore);
-        var out = new Document("category", category).append("stores", rows);
-        String json = out.toJson();
-        cache.put(key, json, Duration.ofMinutes(5));
-        return Response.ok(json).build();
+    // ---------- Estatísticas simples (min/avg/max) por categoria ----------
+    @GET
+    @Path("/{category}/stats")
+    public Response stats(@PathParam("category") String category) {
+        List<PriceEntry> rows = repo.findByCategory(category);
+        if (rows.isEmpty()) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity(new ApiMessage("Sem preços para a categoria " + category))
+                    .build();
+        }
+        DoubleSummaryStatistics s = rows.stream()
+                .filter(r -> r.price != null)
+                .collect(Collectors.summarizingDouble(r -> r.price));
+
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("category", category);
+        out.put("count", s.getCount());
+        out.put("min", s.getMin());
+        out.put("avg", s.getAverage());
+        out.put("max", s.getMax());
+        return Response.ok(out).build();
+    }
+
+    // ------------- DTO de mensagem simples -------------
+    public record ApiMessage(String message) {}
+
+    // ------------- Entidade Mongo ----------------------
+    @MongoEntity(collection = "prices")
+    public static class PriceEntry {
+        public String id;        // _id (string para simplificar)
+        public String ean;
+        public String storeId;
+        public Double price;
+        public Boolean promo;
+        public String ts;        // timestamp ISO-8601 string
+        public String category;
+    }
+
+    // ------------- Repositório Panache -----------------
+    @ApplicationScoped
+    public static class PriceRepo implements PanacheMongoRepository<PriceEntry> {
+
+        public List<PriceEntry> findByCategoryOrderedByPrice(String category) {
+            // Ordena por preço crescente
+            return find("category", Sort.by("price"), category).list();
+        }
+
+        public List<PriceEntry> findByCategory(String category) {
+            return find("category", category).list();
+        }
     }
 }

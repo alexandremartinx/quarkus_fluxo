@@ -1,0 +1,5 @@
+com/acme/product/CompareResource$ApiMessage.class
+com/acme/product/CompareResource$PriceEntry.class
+com/acme/product/RedisCache.class
+com/acme/product/CompareResource.class
+com/acme/product/CompareResource$PriceRepo.class

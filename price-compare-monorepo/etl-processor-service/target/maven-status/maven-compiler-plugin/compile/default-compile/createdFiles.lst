@@ -1,0 +1,3 @@
+com/acme/etl/PriceDoc.class
+com/acme/etl/PriceConsumer.class
+com/acme/etl/PriceRepository.class
