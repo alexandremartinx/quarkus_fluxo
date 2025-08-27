@@ -2,14 +2,16 @@
 FROM maven:3.9-eclipse-temurin-17 AS build
 WORKDIR /workspace
 COPY . .
-RUN mvn -q -DskipTests -pl common-dto,product-compare-service -am package
+RUN mvn -q -DskipTests \
+    -Dquarkus.package.type=uber-jar \
+    -pl common-dto,product-compare-service -am package
 
 # -------- Stage 2: Runtime --------
 FROM eclipse-temurin:17-jre
 WORKDIR /work
-COPY --from=build /workspace/product-compare-service/target/quarkus-app/ /work/
+COPY --from=build /workspace/product-compare-service/target/*-runner.jar /work/app.jar
 RUN useradd -r -u 1001 quarkus && chown -R quarkus:quarkus /work
 USER quarkus
 EXPOSE 8083
 ENV JAVA_OPTS="-Djava.util.logging.manager=org.jboss.logmanager.LogManager"
-CMD ["java","-jar","/work/quarkus-run.jar"]
+CMD ["java","-jar","/work/app.jar"]
