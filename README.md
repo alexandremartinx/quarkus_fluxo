@@ -4,9 +4,9 @@ Monorepo com **4 microserviços Quarkus** para ingestão, processamento e compar
 
 ---
 
-## 🏗️ Arquitetura Geral
+## Arquitetura Geral
 
-```
+```s
 ┌─────────────────────┐      events: prices.parsed       ┌───────────────────────┐
 │ file-ingest-service │ ─────────────────────────────────▶│ etl-processor-service │
 │  (TXT → Delta + MQ) │                                   │  (Rabbit → MongoDB)   │
@@ -146,15 +146,5 @@ curl http://localhost:8083/compare/product/7894900011517 | jq
 ```bash
 curl "http://localhost:8084/compare/category/limpeza?limitPerStore=3" | jq
 ```
-
----
-
-## Próximos Passos
-
-- Adicionar **health checks** com `quarkus-smallrye-health`
-- Integrar **tracing** com OpenTelemetry
-- Configurar **métricas** com Micrometer
-- Escrever **Parquet real** no Delta Lake
-- Preparar **manifests Kubernetes** para Deployments e Services
 
 ---
