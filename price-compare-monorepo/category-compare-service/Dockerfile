@@ -1,17 +1,22 @@
-# -------- Stage 1: Build --------
 FROM maven:3.9-eclipse-temurin-17 AS build
 WORKDIR /workspace
 COPY . .
-RUN mvn -q -DskipTests \
-    -Dquarkus.package.type=uber-jar \
-    -pl common-dto,category-compare-service -am package
+RUN mvn -q -DskipTests -pl common-dto,category-compare-service -am package
 
-# -------- Stage 2: Runtime --------
 FROM eclipse-temurin:17-jre
 WORKDIR /work
-COPY --from=build /workspace/category-compare-service/target/*-runner.jar /work/app.jar
+COPY --from=build /workspace/category-compare-service/target/ /work/
 RUN useradd -r -u 1001 quarkus && chown -R quarkus:quarkus /work
 USER quarkus
 EXPOSE 8084
 ENV JAVA_OPTS="-Djava.util.logging.manager=org.jboss.logmanager.LogManager"
-CMD ["java","-jar","/work/app.jar"]
+CMD sh -c '\
+  if [ -f /work/quarkus-app/quarkus-run.jar ]; then \
+    exec java $JAVA_OPTS -jar /work/quarkus-app/quarkus-run.jar; \
+  elif ls /work/*-runner.jar >/dev/null 2>&1; then \
+    exec java $JAVA_OPTS -jar /work/*-runner.jar; \
+  elif ls /work/*.jar >/dev/null 2>&1; then \
+    exec java $JAVA_OPTS -jar $(ls -1 /work/*.jar | head -n1); \
+  else \
+    echo "Nenhum JAR executável encontrado em /work" >&2; ls -la /work >&2; exit 1; \
+  fi'
